@@ -101,21 +101,30 @@ class CharDecoder(nn.Module):
         ###        Their indices are self.target_vocab.start_of_word and self.target_vocab.end_of_word, respectively.
         
 
-        output_word = ['']*initialStates[1].size(1)
+        output_word = []
         curr = [self.target_vocab.char2id['{'] for i in range(initialStates[1].size(1))]
         soft = nn.Softmax(dim=2)
+        start_idx = self.target_vocab.start_of_word
+        batch_size = initialStates[0].shape[1]
         curr = torch.tensor(curr, device=device).unsqueeze(dim=0)
         hidden = initialStates
-        for i in range(max_length-1):
+        
+        for i in range(max_length):
             
             s_t, hidden = self.forward(curr, hidden)
             pred = soft(s_t)
             vals, indices = torch.max(pred, dim=2)
-            output_word = [s + self.target_vocab.id2char[indices[0][j].item()] for j,s in enumerate(output_word)]
             curr = indices
-
+            output_word += [curr]
         #print(output_word)
-        output_word = [''.join([w for w in s if s not in ['{','}','<pad>','<unk>']]) for s in output_word]
+
+        decodedWords = []
+        end_idx = self.target_vocab.char2id['}']
+        output_word = torch.cat(output_word).t().tolist()
+
+        output_word = [''.join([self.target_vocab.id2char[ch]
+                    for ch in word[:word.index(end_idx)]]) for word in output_word]
+
         return output_word
         ### END YOUR CODE
 
